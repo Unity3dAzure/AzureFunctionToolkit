@@ -3,20 +3,25 @@ using System.IO;
 using System.Text;
 using System.Xml.Serialization;
 using UnityEngine;
-//using Newtonsoft.Json; /// uncomment if you have Newtownsoft plugin
+/// To use Newtonsoft JSON add "JSON_NET" to the "Scripting Define Symbols" in Player Settings > Other Settings
+#if JSON_NET
+using Newtonsoft.Json; // Requires Newtonsoft JSON plugin
+#endif
 
 namespace UnityRESTRequest
 {
-    static class Serializer
+    public static class Serializer
     {
         public static T ParseJson<T>(string json)
         {
             //Debug.Log("Try parse JSON using type: " + typeof(T) + "\n" + json);
             try
             {
-                //var data = JsonConvert.DeserializeObject<T>(json); /// uncomment if you have Newtownsoft plugin
-                var data = JsonUtility.FromJson<T>(json);
-                return data;
+#if JSON_NET
+                return JsonConvert.DeserializeObject<T>(json); // Requires Newtonsoft JSON plugin
+#else
+                return JsonUtility.FromJson<T>(json);
+#endif
             }
             catch (Exception ex)
             {

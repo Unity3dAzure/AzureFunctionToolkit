@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.IO;
 using System.Linq;
 using System.Text;
 using UnityEngine;
@@ -108,6 +109,11 @@ namespace UnityRESTRequest
         protected bool sending = false;
 
         /// <summary>
+        /// Try to detect json text in the response body for parsing when the incorrect content-type header is sent in the response.
+        /// </summary>
+        public bool AutoDetect = true;
+
+        /// <summary>
         /// Logging preferences
         /// </summary>
         private static ILogger logger = new Logger(Debug.unityLogger.logHandler);
@@ -198,7 +204,7 @@ namespace UnityRESTRequest
                 yield break;
             }
             sending = true;
-            using (UnityWebRequest www = new UnityWebRequest(Uri))
+            using (UnityWebRequest www = new UnityWebRequest(Uri.AbsoluteUri))
             {
                 www.method = Method.ToString();
                 www.downloadHandler = new DownloadHandlerBuffer();
@@ -225,17 +231,17 @@ namespace UnityRESTRequest
 
         protected virtual void ErrorHandler(UnityWebRequest www)
         {
-            var response = ParseResponse<E>(www);
+            var response = ParseResponse<E>(www, AutoDetect);
             OnError(response);
         }
 
         protected virtual void SuccessHandler(UnityWebRequest www)
         {
-            var response = ParseResponse<S>(www);
+            var response = ParseResponse<S>(www, AutoDetect);
             OnSuccess(response);
         }
 
-        public static Response ParseResponse<T>(UnityWebRequest www)
+        public static Response ParseResponse<T>(UnityWebRequest www, bool autoDetect)
         {
             Response response;
             /// Plain text response (string type)
@@ -260,6 +266,16 @@ namespace UnityRESTRequest
                         response = new ResponseData<T>(www, xml);
                         break;
                     default:
+                        if (autoDetect && !string.IsNullOrEmpty(www.downloadHandler.text))
+                        {
+                            if ( (www.downloadHandler.text.First().Equals('{') && www.downloadHandler.text.Last().Equals('}')) || 
+                                 (www.downloadHandler.text.First().Equals('[') && www.downloadHandler.text.Last().Equals(']')) )
+                            {
+                                Debug.Log("Attempting to parse json string detected in response body");
+                                response = new ResponseData<T>(www, Serializer.ParseJson<T>(www.downloadHandler.text));
+                                break;
+                            }
+                        }
                         response = new ResponseText(www, www.downloadHandler.text);
                         break;
                 }
@@ -307,7 +323,19 @@ namespace UnityRESTRequest
             }
             else if (!string.IsNullOrEmpty(filePath))
             {
+#if UNITY_2018
                 www.uploadHandler = new UploadHandlerFile(filePath);
+#else
+                if (File.Exists(filePath))
+                {
+                    var bytes = File.ReadAllBytes(filePath);
+                    www.uploadHandler = new UploadHandlerRaw(bytes);
+                }
+                else
+                {
+                    Debug.LogError("Error file not found: " + filePath);
+                }
+#endif
             }
             else if (data != null)
             {
@@ -365,7 +393,7 @@ namespace UnityRESTRequest
             }
         }
 
-        #region Unity Events
+#region Unity Events
         protected void FireResponseError(Response response)
         {
             if (ResponseError != null)
@@ -381,9 +409,9 @@ namespace UnityRESTRequest
                 ResponseSuccess.Invoke(response);
             }
         }
-        #endregion
+#endregion
 
-        #region Logging format helpers for request and response
+#region Logging format helpers for request and response
 
         protected void log(LogType logType, string message, UnityWebRequest request)
         {
@@ -409,6 +437,6 @@ namespace UnityRESTRequest
             }
         }
 
-        #endregion
+#endregion
     }
 }

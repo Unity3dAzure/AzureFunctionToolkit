@@ -136,7 +136,7 @@ namespace UnityRESTRequest
             }
             else
             {
-                var response = ParseResponse<DurableInstance<S>>(www);
+                var response = ParseResponse<DurableInstance<S>>(www, AutoDetect);
                 OnSuccess(response);
             }
         }

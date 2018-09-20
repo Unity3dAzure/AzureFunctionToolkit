@@ -9,7 +9,7 @@ using UnityRESTRequest;
 /// </summary>
 public abstract class RetryableRequest<E,S> : Request<E,S>
 {
-    private bool requestSucceeded = false;
+    private bool requestSucceeded = true; // initially set to true to prevent automatic retry on update
 
     /// <summary>
     ///  State retained for retryable request
