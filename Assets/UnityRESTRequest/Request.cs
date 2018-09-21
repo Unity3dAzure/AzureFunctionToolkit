@@ -362,13 +362,14 @@ namespace UnityRESTRequest
         public void AddQueryParam(string key, string value)
         {
             var item = new SerializableKeyValue(key, value);
-            if (!Params.Contains(item))
+            var index = Params.FindIndex(kv => string.Equals(kv.Key, key));
+            if (index < 0)
             {
                 Params.Add(item);
             }
             else
             {
-                Params[Params.FindIndex(kv => string.Equals(kv.Key, key))] = item;
+                Params[index] = item;
             }
         }
 
